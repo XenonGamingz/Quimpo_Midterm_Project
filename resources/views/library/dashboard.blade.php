@@ -1,7 +1,32 @@
 @extends('layouts.app')
 
 @section('content')
-<div x-data="{ editModal:false, editId:null }" class="space-y-6">
+<div x-data="{ 
+  editModal:false, 
+  editId:null,
+  previewImage: null,
+  editPreviewImage: null,
+  handlePhotoChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.previewImage = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  },
+  handleEditPhotoChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.editPreviewImage = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+}" class="space-y-6">
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="p-4 bg-white rounded shadow">
       <div class="text-sm text-gray-500">Total Books</div>
@@ -70,8 +95,11 @@
         </div>
         <div>
           <label class="text-sm">Cover Photo</label>
-          <input name="photo" type="file" accept="image/*" class="w-full mt-1 rounded border p-2" />
+          <input name="photo" type="file" accept="image/*" @change="handlePhotoChange" class="w-full mt-1 rounded border p-2" />
           @error('photo')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
+          <div x-show="previewImage" class="mt-3">
+            <img :src="previewImage" alt="Preview" class="h-32 object-cover rounded border">
+          </div>
         </div>
       </div>
 
@@ -113,7 +141,7 @@
               <td class="p-2 align-top">{{ $book->category->name ?? 'N/A' }}</td>
               <td class="p-2 align-top">
                 <div class="flex flex-wrap items-center gap-2">
-                  <button @click="editModal=true; editId={{ $book->id }}" class="px-3 py-1 rounded border text-sm">Edit</button>
+                  <button @click="editModal=true; editId={{ $book->id }}; editPreviewImage=null;" class="px-3 py-1 rounded border text-sm">Edit</button>
 
                   <form method="POST" action="{{ route('library.books.destroy', $book) }}" class="inline" onsubmit="return confirm('Delete book?');">
                     @csrf
@@ -153,7 +181,7 @@
             <p class="text-sm text-gray-600">ISBN: {{ $book->isbn ?? 'N/A' }}</p>
             <p class="text-sm text-gray-600">Year: {{ $book->year ?? 'N/A' }}</p>
             <div class="mt-2 flex flex-wrap gap-2">
-              <button @click="editModal=true; editId={{ $book->id }}" class="px-3 py-1 rounded border text-sm bg-blue-500 text-white">Edit</button>
+              <button @click="editModal=true; editId={{ $book->id }}; editPreviewImage=null;" class="px-3 py-1 rounded border text-sm bg-blue-500 text-white">Edit</button>
               <form method="POST" action="{{ route('library.books.destroy', $book) }}" class="inline" onsubmit="return confirm('Delete book?');">
                 @csrf
                 @method('DELETE')
@@ -211,7 +239,19 @@
             </div>
             <div>
               <label>Cover Photo</label>
-              <input name="photo" type="file" accept="image/*" class="w-full mt-1 rounded border p-2" />
+              <input name="photo" type="file" accept="image/*" @change="handleEditPhotoChange" class="w-full mt-1 rounded border p-2" />
+              <template x-if="editPreviewImage">
+                <div class="mt-3">
+                  <p class="text-xs text-gray-600 mb-2">New photo preview:</p>
+                  <img :src="editPreviewImage" alt="Edit Preview" class="h-32 object-cover rounded border">
+                </div>
+              </template>
+              <template x-if="!editPreviewImage">
+                <div class="mt-3" x-show="document.querySelector(`[data-b-${editId}-photo]`)?.value">
+                  <p class="text-xs text-gray-600 mb-2">Current photo:</p>
+                  <img :src="`/storage/${document.querySelector('[data-b-' + editId + '-photo]')?.value || ''}`" :key="editId" alt="Current" class="h-32 object-cover rounded border" onerror="this.style.display='none'">
+                </div>
+              </template>
             </div>
           </div>
 
@@ -231,6 +271,7 @@
   <input type="hidden" data-b-{{ $b->id }}-author value="{{ $b->author }}" />
   <input type="hidden" data-b-{{ $b->id }}-isbn value="{{ $b->isbn }}" />
   <input type="hidden" data-b-{{ $b->id }}-year value="{{ $b->year }}" />
+  <input type="hidden" data-b-{{ $b->id }}-photo value="{{ $b->photo }}" />
 @endforeach
 
 @endsection
